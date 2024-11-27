@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 const AudioRecorder = ({ onUploadComplete }) => { // Accept a callback prop
   const [mediaRecorder, setMediaRecorder] = useState(null);
@@ -67,11 +67,23 @@ const AudioRecorder = ({ onUploadComplete }) => { // Accept a callback prop
     }
   };
 
+  const canvasRef =useRef(null)
+  const [isInit,setIsInit] = useState(false)
+  const initCvs = ()=> {
+    canvasRef.current.width = window.innerWidth * devicePixelRatio
+    canvasRef.current.height = (window.innerHeight / 2) * devicePixelRatio
+  }
+  useEffect(()=>{
+    initCvs()
+    
+  },[])
   return (
     <div>
       <button onClick={isRecording ? stopRecording : startRecording}>
         {isRecording ? 'Stop Recording' : 'Start Recording'}
       </button>
+      
+    <canvas ref={canvasRef}></canvas>
     </div>
   );
 };

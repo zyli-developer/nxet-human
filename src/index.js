@@ -1,10 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+
+import "normalize.css"
 import './index.css';
-import vConsole from './utils/vConsole'
+// import vConsole from './utils/vConsole'
 
 import App from './App';
-// import reportWebVitals from './reportWebVitals';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

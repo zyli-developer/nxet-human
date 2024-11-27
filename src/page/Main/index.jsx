@@ -1,28 +1,34 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./index.css";
 import NextCas from "@nextcas/sdk";
-// import axios from "axios";
-// import Icon from '../../components/Icon'
-import sendSvg  from '../../icons/send.svg'
-import { dialogue, nhToken } from "../../server/main";
+
+import { blobToBase64 } from "../../utils/index";
+import { v4 as uuid } from "uuid";
+import sendSvg from "../../assets/send.svg";
+import adudioSvg from "../../assets/audio.svg";
+import {
+  dialogue,
+  nhToken,
+  textToSpeech,
+  audioToText,
+} from "../../server/main";
 
 let nextCas = null;
 
 function Human() {
   const container = useRef(null);
-  const chatRef =useRef(null)
+  const chatRef = useRef(null);
   const [token, setToken] = useState();
   const [inited, setInited] = useState();
   const [progress, setProgress] = useState(0);
-  
+
   const getToken = async () => {
     try {
-      const response = await nhToken({"visitId":"123", "visitName":"abc"});
-      console.log('%c [ response ]-19', 'font-size:13px; background:pink; color:#bf2c9f;', response)
+      const response = await nhToken({ visitId: "123", visitName: "abc" });
       setToken(response.data);
     } catch (err) {
       console.log(
-        "%c [ err ]-21",
+        "%c [ err ]-23",
         "font-size:13px; background:pink; color:#bf2c9f;",
         err
       );
@@ -30,37 +36,23 @@ function Human() {
   };
   useEffect(() => {
     getToken();
-      }, []);
+  }, []);
 
-  const initHuman = ()=>{
+  useEffect(() => {
+    if (!token) return;
     nextCas = new NextCas(container.current, {
-      avatarId: "avatar_257",
-      actorId: "actor_114303",
+      avatarId: "avatar_514087",
+      actorId: "actor_100256",
       token,
       templateName: "base",
-      // src:"http://192.168.1.12:3000/empty"
     });
 
     nextCas.on("initProgress", (cent) => {
       setProgress(() => cent);
     });
-    nextCas.on("ready", (res) => {      
+    nextCas.on("ready", (res) => {
       setInited(true);
-      setTimeout(() => {
-        nextCas.speak("你好，请问有什么可以帮您", {
-          onEnd: () => {
-            console.log("onEnd");
-          },
-          onStart: () => {
-            console.log("onStart");
-          },
-        });
-      });
     });
-  }
-  useEffect(() => {
-    if (!token) return;
-    initHuman()
     return () => {
       nextCas?.destroy();
     };
@@ -69,51 +61,15 @@ function Human() {
   const [speakText, setSpeakText] = useState("");
   const [chatHistory, setChatHistory] = useState([]);
   const [status, setStatus] = useState("default");
-  
-  const handleMicClick = () => {
-    setStatus("talking"); // 点击话筒切换到按住说话状态
+
+  const handleMicClick = (type) => {
+    setStatus(type); // 点击话筒切换到按住说话状态
   };
-  // const ask = async () => {
-  //   setChatHistory((prev) =>
-  //     prev.concat({
-  //       source: "guest",
-  //       content: speakText,
-  //     })
-  //   );
-
-  //   const askId = await nextCas.ask(speakText);
-
-  //   const index = chatHistory.length;
-  //   setSpeakText("");
-  //   function reply(data) {
-  //     if (data.id === askId) {
-  //       if (!chatHistory[index]) {
-  //         setChatHistory((prev) =>
-  //           prev.concat({
-  //             source: "nexthuman",
-  //             content: data.data.content,
-  //           })
-  //         );
-  //       } else {
-  //         const chat = (chatHistory[index].content += data.data.content);
-  //         setChatHistory( ()=>chat);
-  //       }
-        
-  //       console.log('%c [ chatHistory ]-112', 'font-size:13px; background:pink; color:#bf2c9f;', chatHistory)
-  //       if (data.data.last) {
-  //         // 结束了
-  //         nextCas.off("reply", reply);
-  //       }
-  //     }
-  //   }
-  //   nextCas.on("reply", reply);
-  // };
- 
 
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef(null);
   const timeoutRef = useRef(null);
-  const [inputColor,setInputColor] = useState('put')
+  const [inputColor, setInputColor] = useState("put");
   const [cancelRecording, setCancelRecording] = useState(false);
 
   const startYRef = useRef(0); // 记录触摸开始的 Y 坐标
@@ -134,11 +90,10 @@ function Human() {
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (event) => {
-      console.log('%c [ onresult ]-137', 'font-size:13px; background:pink; color:#bf2c9f;', event)
       const transcript = event.results[0][0].transcript;
-    
       setChatHistory((prev) =>
         prev.concat({
+          id: uuid(),
           source: "guest",
           content: transcript,
         })
@@ -150,169 +105,280 @@ function Human() {
     };
 
     recognition.onend = (event) => {
-      console.log('%c [ onend ]-151', 'font-size:13px; background:pink; color:#bf2c9f;', event)
-      setIsRecording(false);     
+      setIsRecording(false);
     };
 
     recognitionRef.current = recognition;
   };
- // 开始录音和语音识别
-  const startRecording = () => {
-    if (!recognitionRef.current) {
-      initializeRecognition();
-    }
 
-    recognitionRef.current.start();
+  const initAudio = () => {
+    navigator.mediaDevices
+      .getUserMedia({
+        audio: true,
+      })
+      .then(initAudioData)
+      .catch((e) => {
+        console.log("出问题", e);
+      });
+  };
+  const audioCtx = useRef(null);
+  const source = useRef(null);
+  const analyserNode = useRef(null);
+
+  const initAudioData = (stream) => {
+    recognitionRef.current = stream;
+    audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
+    // audioCtx.sampleRate = 1600;
+    source.current = audioCtx.current.createMediaStreamSource(
+      recognitionRef.current
+    );
+    analyserNode.current = audioCtx.current.createAnalyser();
+    analyserNode.current.fftSize = 4096;
+
+    analyserNode.current.smoothingTimeConstant = 0.85;
+    source.current.connect(analyserNode.current);
+    recordAudioData();
+  };
+  const recordAudioData = () => {
+    const chunks = [];
+    const recorder = new MediaRecorder(recognitionRef.current, {
+      mimeType: "audio/webm",
+    });
+
+    recorder.ondataavailable = (event) => {
+      chunks.push(event.data);
+    };
+
+    recorder.onstop = async () => {
+      const audioBlob = new Blob(chunks, { type: "audio/wav" });
+      const base64 = await blobToBase64(audioBlob);
+      initFetch(base64);
+    };
+
+    recorder.start();
+    setTimeout(() => recorder.stop(), 5000);
+  };
+
+  const initFetch = async (base64data) => {
+    const asr = await audioToText({
+      data: base64data,
+      format: "wav",
+      sampleRate: 1600,
+    });
+
+    if (!asr) return;
+    const text = await dialogue({ streaming: false, data: asr.data });
+
+    if (!text) return;
+    const audioRes = await textToSpeech({ streaming: false, data: asr.data });
+
+    nextCas.speakByAudio(audioRes.data);
+  };
+  // 开始录音和语音识别
+  const startRecording = () => {
+    // if (!recognitionRef.current) {
+    // initializeRecognition();
+    initAudio();
+    // }
+    // recognitionRef.current.start();
     setIsRecording(true);
   };
 
   // 停止录音和语音识别
   const stopRecording = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
+    // if (recognitionRef.current) {
+    // recognitionRef.current.stop();
+    // }
+
+    // 关闭麦克风
+    const tracks = recognitionRef.current.getAudioTracks();
+    for (let i = 0, len = tracks.length; i < len; i++) {
+      tracks[i].stop();
     }
+    // 断开音频节点
+    analyserNode.current.disconnect();
+    source.current.disconnect();
+    analyserNode.current = null;
+    source.current = null;
+
     setIsRecording(false);
   };
   const handleMouseDown = async (e) => {
-    console.log('%c [ e ]-177', 'font-size:13px; background:pink; color:#bf2c9f;', e)
-    startYRef.current = e.touches[0].clientY; // 记录触摸的起始 Y 坐标
-    setStatus("recording")
-    setInputColor('down')
+    if (e && e.touches?.length > 0) {
+      startYRef.current = e?.touches[0]?.clientY || 0; // 记录触摸的起始 Y 坐标
+    }
+    setStatus("recording");
+    setInputColor("down");
     timeoutRef.currepnt = setTimeout(() => {
       startRecording();
     }, 300); // 延迟 300 毫秒开始录音
-  }
+  };
   const handleMouseUp = () => {
-    setStatus("talking")
-    setInputColor('put')
+    setStatus("talking");
+    setInputColor("put");
     setCancelRecording(false);
     clearTimeout(timeoutRef.current);
     if (isRecording) {
       stopRecording();
     }
   };
-  const handleTouchMove =(e)=>{
-    const currentY = e.touches[0].clientY; // 当前 Y 坐标
+  const handleTouchMove = (e) => {
+    const currentY = e?.touches[0]?.clientY || 0; // 当前 Y 坐标
     if (startYRef.current - currentY > 50) {
       // 如果上滑超过 50 像素
       setCancelRecording(true);
     } else {
       setCancelRecording(false);
     }
-  }
+  };
 
-  const onkeydown =async (e)=>{
-    if(!speakText) return
+  const sendSpeak = async () => {
+    if (!speakText) return;
+    setChatHistory((prev) =>
+      prev.concat([
+        {
+          id: uuid(),
+          source: "guest",
+          content: speakText,
+        },
+      ])
+    );
+
+    const talk = await dialogue({ streaming: false, data: speakText });
+    if (!talk) return;
+    const audio = await textToSpeech({ data: talk });
+    console.log(
+      "%c [ audio ]-296",
+      "font-size:13px; background:pink; color:#bf2c9f;",
+      audio
+    );
+    nextCas.speakByAudio(audio.data, {
+      onEnd: () => {
+        setSpeakText("");
+        console.log("onEnd");
+      },
+      onStart: () => {
+        setChatHistory((prev) =>
+          prev.concat([
+            {
+              id: uuid(),
+              source: "master",
+              content: talk,
+            },
+          ])
+        );
+      },
+    });
+  };
+
+  const onkeydown = async (e) => {
     if (e.keyCode === 13) {
-      setChatHistory((prev)=>prev.concat([{
-        source: "guest",
-        content: speakText,
-      }]))
+      sendSpeak();
+    }
+  };
 
-      const talk = await dialogue({  "streaming":false,
-        "data":speakText})
-        console.log('%c [ talk ]-192', 'font-size:13px; background:pink; color:#bf2c9f;', talk)
-        if(!talk) return
-
-      nextCas.speak(talk, {
-        onEnd: () => {
-          console.log("onEnd");
-          
-        },
-        onStart: () => {
-          setSpeakText('')
-          setChatHistory((prev)=>prev.concat([{
-            source: "master",
-            content: talk,
-          }]))
-          console.log("onStart");
-          // chatRef.current.scrollTop = chatRef.current.scrollHeight;
-        },
-      });
-		}
-  }
-
-  useEffect(()=>{
-    if(!chatRef?.current) return
+  useEffect(() => {
+    if (!chatRef?.current) return;
     chatRef.current.scrollTop = chatRef.current?.scrollHeight;
-  },[chatHistory])
+  }, [chatHistory]);
+
+  const containerCss = useMemo(() => {
+    return {
+      position: "relative",
+      width: `${chatHistory.length > 0 ? "calc(100vw - 150px)" : "100vw"}`,
+      height: "calc(100vh - 380px)",
+      flexShrink: 0,
+      backgroundColor: "#4B526B",
+    };
+  }, [chatHistory]);
 
   return (
-    <main>
-      <div
-        style={{
-          position: "relative",
-          width: "100vw",
-          height: "100vh",
-          flexShrink: 0,
-          backgroundColor: "#4B526B",
-        }}
-        className={`${chatHistory.length>0 ? 'right_150': ''}`}
-        ref={container}
-      ></div>
+    <main className="main">
+      <div className="content">
+        <div
+          style={containerCss}
+          className={`${chatHistory.length > 0 ? "right_150" : ""}`}
+          ref={container}
+        ></div>
+        <div className="chat" ref={chatRef}>
+          {chatHistory?.map((e) => (
+            <div key={e.id} className={`chat-item ${e.source}`}>
+              {e.content}
+            </div>
+          ))}
+        </div>
+      </div>
       {!inited && (
-        <div className='apis'>
-          <div className='api_box'>
-            <div className='api_title'>初始化状态：</div>
-            {inited ? "初始化完成" : "正在加载" + progress + "%"}
+        <div className="apis">
+          <div className="api_box">
+            <div className="api_title">初始化状态：</div>
+            <div className="api_title">
+              {inited ? "初始化完成" : "正在加载" + progress + "%"}
+            </div>
           </div>
         </div>
       )}
 
       {inited && (
         <>
-        <div className="chat" ref={chatRef}>
-          {chatHistory?.map(e => (
-            <div className={`chat-item ${e.source}`}>{e.content}</div>
-          ))}
-        </div>
-        <div className="container">
+          <div className="container">
             {status === "default" && (
-              <div className='footer'>
+              <div className="footer">
                 <div className="input-container">
                   <input
                     type="text"
-                    placeholder="旅行这点事，来跟我聊聊吧"
+                    placeholder="来跟我聊聊吧"
                     className="input"
                     value={speakText}
                     onKeyDown={(e) => onkeydown(e)}
-                    onChange={(e) => setSpeakText(e.target.value)} />
-                  <button className="mic-button" onClick={handleMicClick}>
-                    🎤
+                    onChange={(e) => setSpeakText(e.target.value)}
+                  />
+                  <button
+                    className="mic-button"
+                    onClick={() => handleMicClick("talking")}
+                  >
+                    <img src={adudioSvg} alt="" />
                   </button>
                 </div>
-                <div className='phone' onClick={(e) =>onkeydown(e)}>
-                 {/* <Icon name='send'></Icon> */}
-                 <img src={sendSvg} alt="" />
+                <div className="phone" onClick={(e) => sendSpeak(e)}>
+                  <img src={sendSvg} alt="" />
                 </div>
               </div>
             )}
 
-            { ['talking', 'recording'].includes(status)  && (
+            {inited && ["talking", "recording"].includes(status) && (
               <div className="input-container">
                 <button
-                  
-                  placeholder={`${status === "recording" ? '松手发送':'按住说话'}`}
-                  className={`input ${inputColor === 'put' ? 'put': 'down'}`}
+                  placeholder={`${
+                    status === "recording" ? "松手发送" : "按住说话"
+                  }`}
+                  className={`input ${inputColor === "put" ? "put" : "down"}`}
                   readOnly
                   onMouseDown={handleMouseDown}
                   onMouseUp={handleMouseUp}
                   onTouchStart={handleMouseDown}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleMouseUp}
-                >   {cancelRecording
-                  ? "松开取消"
-                  : isRecording
-                  ? "录音中..."
-                  : "按住说话"}</button>
-                <button className="mic-button">☰</button>
+                >
+                  {cancelRecording
+                    ? "松开取消"
+                    : isRecording
+                    ? "录音中..."
+                    : "按住说话"}
+                </button>
+
+                <button
+                  className="mic-button"
+                  onClick={() => handleMicClick("default")}
+                >
+                  ☰
+                </button>
               </div>
             )}
-
-       
-          </div></>
+            <div className="bot">内容由AI生成，使用前请先仔细甄别</div>
+          </div>
+        </>
       )}
-      {inited && (<div className="bot">内容由AI生成，使用前请先仔细甄别</div>)}
     </main>
   );
 }

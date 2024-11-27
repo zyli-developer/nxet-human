@@ -1,26 +1,27 @@
-import axios from 'axios'
-const baseUrl = 'http://14.103.140.194:8000'
+import axios from "axios";
+// const baseUrl = 'http://14.103.140.194:8000'
+const baseUrl = "https://cloud.walliai.com";
 
 class HttpRequest {
   constructor(baseUrl) {
-    this.baseUrl = baseUrl
-    this.queue = {}
+    this.baseUrl = baseUrl;
+    this.queue = {};
   }
   getInsideConfig() {
     const config = {
       baseURL: this.baseUrl,
-      timeout: 30000,
+      timeout: 600000,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
-    }
+    };
     // const token = getAccessToken()
 
     // if (token) {
     //   config.headers.Authorization = 'JWT ' + token
     // }
 
-    return config
+    return config;
   }
   interceptors(instance, { url, showError = true, is_code = true }) {
     // 请求拦截
@@ -30,33 +31,32 @@ class HttpRequest {
         config.params = {
           _t: Date.parse(new Date()) / 1000,
           ...config.params,
-        }
+        };
 
- 
-        return config
+        return config;
       },
       (error) => {
-        return Promise.reject(error)
+        return Promise.reject(error);
       }
-    )
+    );
     // 响应拦截
     instance.interceptors.response.use(
-      (res) => {    
-        return res.data
+      (res) => {
+        return res.data;
       },
 
       (error) => {
-        return Promise.reject(error)
+        return Promise.reject(error);
       }
-    )
+    );
   }
 
   request(options) {
-    const instance = axios.create()
-    options = Object.assign(this.getInsideConfig(), options)
-    this.interceptors(instance, options)
-    return instance(options)
+    const instance = axios.create();
+    options = Object.assign(this.getInsideConfig(), options);
+    this.interceptors(instance, options);
+    return instance(options);
   }
 }
-const request = new HttpRequest(baseUrl)
-export default request
+const request = new HttpRequest(baseUrl);
+export default request;

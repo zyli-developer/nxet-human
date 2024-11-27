@@ -1,7 +1,7 @@
 import React from 'react';
 
 let importAll = (requireContext) => requireContext.keys().forEach(requireContext);
-try {importAll(require.context('icons', true, /\.svg$/));} 
+try {importAll(require.context('assets', true, /\.svg$/));} 
 catch (error) {console.log(error);}
 
 const Icon = (props) => {

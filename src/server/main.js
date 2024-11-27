@@ -15,3 +15,19 @@ export const dialogue = (params)=>{
         data:params
     })
 }
+
+export const textToSpeech = (params)=>{
+    return request.request({
+        url:'/nh/tts/v0/infer',
+        method:'POST',
+        data:params
+    })
+}
+
+export const audioToText = (params)=>{
+    return request.request({
+        url:'/nh/asr/v0/infer',
+        method:'POST',
+        data:params
+    })
+}
