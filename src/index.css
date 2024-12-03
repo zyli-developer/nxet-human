@@ -1,8 +1,16 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-
-html {
+body {
   background-color: #4b526b;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+*{
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+button:hover, button:focus, button:active, button:visited {
+  outline: none;
+  box-shadow: none !important;
 }

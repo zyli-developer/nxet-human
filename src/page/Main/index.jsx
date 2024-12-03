@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import "./index.css";
+import styles from "./index.module.scss";
 import NextCas from "@nextcas/sdk";
-
-import { blobToBase64 } from "../../utils/index";
 import { v4 as uuid } from "uuid";
+import Recorder from "js-audio-recorder";
+import { blobToBase64 } from "../../utils/index";
 import sendSvg from "../../assets/send.svg";
 import adudioSvg from "../../assets/audio.svg";
+import textSvg from "../../assets/text.svg";
 import {
   dialogue,
   nhToken,
   textToSpeech,
   audioToText,
 } from "../../server/main";
+import { useWindowSize } from "@/utils/hooks/useWindowSize.js";
+import { message } from "antd";
 
 let nextCas = null;
 
@@ -21,7 +24,8 @@ function Human() {
   const [token, setToken] = useState();
   const [inited, setInited] = useState();
   const [progress, setProgress] = useState(0);
-
+  const { width, height } = useWindowSize();
+  const [packShow, setPackShow] = useState(false);
   const getToken = async () => {
     try {
       const response = await nhToken({ visitId: "123", visitName: "abc" });
@@ -34,8 +38,15 @@ function Human() {
       );
     }
   };
+
+  const recorder = useRef(null);
   useEffect(() => {
     getToken();
+    recorder.current = new Recorder({
+      sampleBits: 16, // 采样位数，支持 8 或 16，默认是16
+      sampleRate: 16000, // 采样率，支持 11025、16000、22050、24000、44100、48000，根据浏览器默认值，我的chrome是48000
+      numChannels: 1,
+    });
   }, []);
 
   useEffect(() => {
@@ -60,104 +71,20 @@ function Human() {
 
   const [speakText, setSpeakText] = useState("");
   const [chatHistory, setChatHistory] = useState([]);
-  const [status, setStatus] = useState("default");
+  const [status, setStatus] = useState("talking");
 
   const handleMicClick = (type) => {
     setStatus(type); // 点击话筒切换到按住说话状态
+    setIsRecording(false);
   };
 
   const [isRecording, setIsRecording] = useState(false);
-  const recognitionRef = useRef(null);
+  // const recognitionRef = useRef(null);
   const timeoutRef = useRef(null);
   const [inputColor, setInputColor] = useState("put");
   const [cancelRecording, setCancelRecording] = useState(false);
 
   const startYRef = useRef(0); // 记录触摸开始的 Y 坐标
-
-  // 初始化 SpeechRecognition
-  const initializeRecognition = () => {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      alert("当前浏览器不支持语音识别功能，请使用 Chrome 或其他支持的浏览器。");
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = "zh-CN"; // 设置语言为中文
-    recognition.interimResults = false; // 是否返回中间结果
-    recognition.maxAlternatives = 1;
-
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setChatHistory((prev) =>
-        prev.concat({
-          id: uuid(),
-          source: "guest",
-          content: transcript,
-        })
-      );
-    };
-
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error:", event);
-    };
-
-    recognition.onend = (event) => {
-      setIsRecording(false);
-    };
-
-    recognitionRef.current = recognition;
-  };
-
-  const initAudio = () => {
-    navigator.mediaDevices
-      .getUserMedia({
-        audio: true,
-      })
-      .then(initAudioData)
-      .catch((e) => {
-        console.log("出问题", e);
-      });
-  };
-  const audioCtx = useRef(null);
-  const source = useRef(null);
-  const analyserNode = useRef(null);
-
-  const initAudioData = (stream) => {
-    recognitionRef.current = stream;
-    audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
-    // audioCtx.sampleRate = 1600;
-    source.current = audioCtx.current.createMediaStreamSource(
-      recognitionRef.current
-    );
-    analyserNode.current = audioCtx.current.createAnalyser();
-    analyserNode.current.fftSize = 4096;
-
-    analyserNode.current.smoothingTimeConstant = 0.85;
-    source.current.connect(analyserNode.current);
-    recordAudioData();
-  };
-  const recordAudioData = () => {
-    const chunks = [];
-    const recorder = new MediaRecorder(recognitionRef.current, {
-      mimeType: "audio/webm",
-    });
-
-    recorder.ondataavailable = (event) => {
-      chunks.push(event.data);
-    };
-
-    recorder.onstop = async () => {
-      const audioBlob = new Blob(chunks, { type: "audio/wav" });
-      const base64 = await blobToBase64(audioBlob);
-      initFetch(base64);
-    };
-
-    recorder.start();
-    setTimeout(() => recorder.stop(), 5000);
-  };
 
   const initFetch = async (base64data) => {
     const asr = await audioToText({
@@ -167,41 +94,69 @@ function Human() {
     });
 
     if (!asr) return;
+    if (asr.data) {
+      setChatHistory((prev) =>
+        prev.concat([
+          {
+            id: uuid(),
+            source: "guest",
+            content: asr.data,
+          },
+        ])
+      );
+    }
+    setPackShow(true);
     const text = await dialogue({ streaming: false, data: asr.data });
-
     if (!text) return;
-    const audioRes = await textToSpeech({ streaming: false, data: asr.data });
 
-    nextCas.speakByAudio(audioRes.data);
+    const audioRes = await textToSpeech({ streaming: false, data: text });
+    nextCas.speakByAudio(audioRes.data, {
+      onEnd: () => {
+        console.log("onEnd");
+      },
+      onStart: () => {
+        setChatHistory((prev) =>
+          prev.concat([
+            {
+              id: uuid(),
+              source: "master",
+              content: text,
+            },
+          ])
+        );
+      },
+    });
   };
+
   // 开始录音和语音识别
   const startRecording = () => {
-    // if (!recognitionRef.current) {
-    // initializeRecognition();
-    initAudio();
-    // }
-    // recognitionRef.current.start();
+    recorder.current.start().then(
+      (res) => {
+        console.log(
+          "%c [ res ]-192",
+          "font-size:13px; background:pink; color:#bf2c9f;",
+          res
+        );
+      },
+      (error) => {
+        message.error(error?.message);
+        console.log(
+          "%c [ error ]-194",
+          "font-size:13px; background:pink; color:#bf2c9f;",
+          error
+        );
+      }
+    );
     setIsRecording(true);
   };
 
   // 停止录音和语音识别
-  const stopRecording = () => {
-    // if (recognitionRef.current) {
-    // recognitionRef.current.stop();
-    // }
-
-    // 关闭麦克风
-    const tracks = recognitionRef.current.getAudioTracks();
-    for (let i = 0, len = tracks.length; i < len; i++) {
-      tracks[i].stop();
-    }
-    // 断开音频节点
-    analyserNode.current.disconnect();
-    source.current.disconnect();
-    analyserNode.current = null;
-    source.current = null;
-
+  const stopRecording = async () => {
+    recorder.current.stop();
+    const blob = recorder.current.getWAVBlob();
+    const base64 = await blobToBase64(blob);
     setIsRecording(false);
+    initFetch(base64);
   };
   const handleMouseDown = async (e) => {
     if (e && e.touches?.length > 0) {
@@ -243,18 +198,14 @@ function Human() {
         },
       ])
     );
-
+    setPackShow(true);
+    setSpeakText("");
     const talk = await dialogue({ streaming: false, data: speakText });
     if (!talk) return;
     const audio = await textToSpeech({ data: talk });
-    console.log(
-      "%c [ audio ]-296",
-      "font-size:13px; background:pink; color:#bf2c9f;",
-      audio
-    );
+
     nextCas.speakByAudio(audio.data, {
       onEnd: () => {
-        setSpeakText("");
         console.log("onEnd");
       },
       onStart: () => {
@@ -285,99 +236,120 @@ function Human() {
   const containerCss = useMemo(() => {
     return {
       position: "relative",
-      width: `${chatHistory.length > 0 ? "calc(100vw - 150px)" : "100vw"}`,
-      height: "calc(100vh - 380px)",
-      flexShrink: 0,
-      backgroundColor: "#4B526B",
+      width,
+      height,
+      right: packShow && chatHistory.length > 0 ? "-180px" : "",
+      borderColor: "none",
+      outlineColor: "none",
+      boxShadow: "none",
     };
-  }, [chatHistory]);
+  }, [height,width,chatHistory, packShow]);
 
   return (
-    <main className="main">
-      <div className="content">
-        <div
-          style={containerCss}
-          className={`${chatHistory.length > 0 ? "right_150" : ""}`}
-          ref={container}
-        ></div>
-        <div className="chat" ref={chatRef}>
-          {chatHistory?.map((e) => (
-            <div key={e.id} className={`chat-item ${e.source}`}>
-              {e.content}
-            </div>
-          ))}
-        </div>
+    <main className={styles.main}>
+      <div className={styles.content}>
+        <div style={containerCss} ref={container} key="container"></div>
+        {chatHistory.length > 0 && (
+          <div className={styles.chat} ref={chatRef}>
+            {packShow &&
+              chatHistory?.map((e) => (
+                <div
+                  key={e.id}
+                  className={`${styles.chat_item} ${styles[e.source]}`}
+                >
+                  {e.content}
+                </div>
+              ))}
+            {packShow && (
+              <span
+                key="packup"
+                className={styles.packup}
+                onClick={() => setPackShow(false)}
+              >
+                {"<"}
+              </span>
+            )}
+            {!packShow && chatHistory.length > 0 && (
+              <span
+                key="packdown"
+                className={styles.packdown}
+                onClick={() => setPackShow(true)}
+              >
+                {">"}
+              </span>
+            )}
+          </div>
+        )}
       </div>
+
       {!inited && (
-        <div className="apis">
-          <div className="api_box">
-            <div className="api_title">初始化状态：</div>
-            <div className="api_title">
-              {inited ? "初始化完成" : "正在加载" + progress + "%"}
-            </div>
+        <div className={styles.apis}>
+          <div className={styles.api_box}>
+            <span>初始化状态：</span>
+            <span>{inited ? "初始化完成" : "正在加载" + progress + "%"}</span>
           </div>
         </div>
       )}
 
       {inited && (
-        <>
-          <div className="container">
-            {status === "default" && (
-              <div className="footer">
-                <div className="input-container">
-                  <input
-                    type="text"
-                    placeholder="来跟我聊聊吧"
-                    className="input"
-                    value={speakText}
-                    onKeyDown={(e) => onkeydown(e)}
-                    onChange={(e) => setSpeakText(e.target.value)}
-                  />
-                  <button
-                    className="mic-button"
-                    onClick={() => handleMicClick("talking")}
-                  >
-                    <img src={adudioSvg} alt="" />
-                  </button>
-                </div>
-                <div className="phone" onClick={(e) => sendSpeak(e)}>
-                  <img src={sendSvg} alt="" />
-                </div>
-              </div>
-            )}
-
-            {inited && ["talking", "recording"].includes(status) && (
-              <div className="input-container">
+        <div className={styles.container}>
+          {status === "default" && (
+            <div className={styles.footer}>
+              <div className={styles.input_container}>
+                <input
+                  type="text"
+                  placeholder="来跟我聊聊吧"
+                  className={styles.input}
+                  value={speakText}
+                  onKeyDown={(e) => onkeydown(e)}
+                  onChange={(e) => setSpeakText(e.target.value)}
+                />
                 <button
-                  placeholder={`${
-                    status === "recording" ? "松手发送" : "按住说话"
-                  }`}
-                  className={`input ${inputColor === "put" ? "put" : "down"}`}
-                  readOnly
-                  onMouseDown={handleMouseDown}
-                  onMouseUp={handleMouseUp}
-                  onTouchStart={handleMouseDown}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleMouseUp}
+                  className={styles.mic_button}
+                  onClick={() => handleMicClick("talking")}
                 >
-                  {cancelRecording
-                    ? "松开取消"
-                    : isRecording
-                    ? "录音中..."
-                    : "按住说话"}
-                </button>
-
-                <button
-                  className="mic-button"
-                  onClick={() => handleMicClick("default")}
-                >
-                  ☰
+                  <img src={adudioSvg} alt="" />
                 </button>
               </div>
-            )}
-            <div className="bot">内容由AI生成，使用前请先仔细甄别</div>
-          </div>
-        </>
+              <div className={styles.phone} onClick={(e) => sendSpeak(e)}>
+                <img src={sendSvg} alt="" />
+              </div>
+            </div>
+          )}
+
+          {inited && ["talking", "recording"].includes(status) && (
+            <div className={styles.input_container}>
+              <button
+                placeholder={`${
+                  status === "recording" ? "松手发送" : "按住说话"
+                }`}
+                className={`${styles.input} ${
+                  inputColor === "put" ? styles.put : styles.down
+                }`}
+                readOnly
+                onMouseDown={handleMouseDown}
+                onMouseUp={handleMouseUp}
+                onTouchStart={handleMouseDown}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleMouseUp}
+              >
+                {cancelRecording
+                  ? "松开取消"
+                  : isRecording
+                  ? "录音中..."
+                  : "按住说话"}
+              </button>
+
+              <button
+                className={styles.mic_button}
+                onClick={() => handleMicClick("default")}
+              >
+                <img src={textSvg} alt="" />
+              </button>
+            </div>
+          )}
+          <div className={styles.bot}>内容由AI生成，使用前请先仔细甄别</div>
+        </div>
       )}
     </main>
   );

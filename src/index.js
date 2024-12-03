@@ -1,7 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
-import "normalize.css"
+// import "normalize.css"
+import 'antd/dist/reset.css'
 import './index.css';
 // import vConsole from './utils/vConsole'
 

@@ -1,18 +1,18 @@
-import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import styles from './index.module.scss';
+import { useEffect, useRef, useState } from "react";
+// import { useNavigate } from 'react-router-dom';
+import styles from "./index.module.scss";
 
-const VALID_CODE = '666666';
+const VALID_CODE = "123456";
 
 const Invitation = () => {
-  const [code, setCode] = useState(Array(6).fill(''));
-  const [error, setError] = useState('');
+  const [code, setCode] = useState(Array(6).fill(""));
+  const [error, setError] = useState("");
   const inputRefs = useRef(Array(6).fill(null));
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   const handleChange = (index, value) => {
     if (!/^\d*$/.test(value)) return;
-    setError('');
+    setError("");
 
     const newCode = [...code];
     newCode[index] = value;
@@ -24,24 +24,24 @@ const Invitation = () => {
   };
 
   const handleKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !code[index] && index > 0) {
+    if (e.key === "Backspace" && !code[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
   const handlePaste = (e) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').slice(0, 6);
+    const pastedData = e.clipboardData.getData("text").slice(0, 6);
     if (!/^\d*$/.test(pastedData)) return;
-    setError('');
+    setError("");
 
     const newCode = [...code];
-    pastedData.split('').forEach((char, index) => {
+    pastedData.split("").forEach((char, index) => {
       if (index < 6) newCode[index] = char;
     });
     setCode(newCode);
 
-    const nextEmptyIndex = newCode.findIndex(c => !c);
+    const nextEmptyIndex = newCode.findIndex((c) => !c);
     if (nextEmptyIndex !== -1) {
       inputRefs.current[nextEmptyIndex]?.focus();
     } else {
@@ -50,33 +50,36 @@ const Invitation = () => {
   };
 
   const handleSubmit = () => {
-    const enteredCode = code.join('');
+    const enteredCode = code.join("");
     if (enteredCode === VALID_CODE) {
-      localStorage.setItem('isAuthenticated', 'true');
-      navigate('/human');
+      sessionStorage.setItem("isAuthenticated", "true");
+      // window.location.replace("/human");
+      window.location.replace("/next");
     } else {
-      setError('验证码错误，请重新输入');
-      setCode(Array(6).fill(''));
+      setError("验证码错误，请重新输入");
+      setCode(Array(6).fill(""));
       inputRefs.current[0]?.focus();
     }
   };
+
+  useEffect(()=>{ inputRefs.current[0]?.focus();},[])
 
   return (
     <div className={styles.container}>
       <div className={styles.wrapper}>
         <h1 className={styles.title}>邀请码</h1>
         <p className={styles.subtitle}>请输入您的六位数邀请码</p>
-        
+
         <div className={styles.inputContainer}>
           {code.map((digit, index) => (
             <input
               key={index}
-              ref={el => inputRefs.current[index] = el}
-              type="number"
-              maxLength={1}
+              ref={(el) => (inputRefs.current[index] = el)}
+              // type="number"
+              maxLength='1'
               value={digit}
-              onChange={e => handleChange(index, e.target.value)}
-              onKeyDown={e => handleKeyDown(index, e)}
+              onChange={(e) => handleChange(index, e.target.value)}
+              onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={handlePaste}
               className={styles.input}
             />
@@ -85,9 +88,9 @@ const Invitation = () => {
 
         {error && <p className={styles.error}>{error}</p>}
 
-        <button 
+        <button
           className={styles.button}
-          disabled={!code.every(digit => digit)}
+          disabled={!code.every((digit) => digit)}
           onClick={handleSubmit}
         >
           确认

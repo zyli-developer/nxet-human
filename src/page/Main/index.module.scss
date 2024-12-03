@@ -1,0 +1,200 @@
+.main {
+  overflow: hidden;
+}
+
+/* 容器样式 */
+.container {
+  margin: 0 auto 10px;
+  position: absolute;
+  bottom: 24px;
+  width: 90%;
+  left: 0;
+  right: 0;
+  // border: 1px solid transparent;
+}
+.footer {
+  display: flex;
+  align-items: center;
+}
+/* 输入框容器 */
+.input_container {
+  display: flex;
+  align-items: center;
+  border: 1px solid #ccc;
+  border-radius: 40px;
+  background-color: white;
+  width: 80%;
+  height: 60px;
+  padding: 5px 30px;
+}
+.input_container {
+  button {
+    user-select: none;
+    outline: none;
+  }
+}
+.input {
+  flex-grow: 1;
+  border: none;
+  outline: none;
+  background-color: transparent;
+  font-size: 30px;
+  color: #555;
+}
+.phone {
+  font-size: 30px;
+  margin-left: 30px;
+}
+
+.mic_button {
+  background: none;
+  border: none;
+  font-size: 30px;
+  cursor: pointer;
+}
+
+/* 录音条样式 */
+.recording_bar {
+  width: 80%;
+  height: 50px;
+  background-color: blue;
+  color: white;
+  font-size: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+}
+
+.bot {
+  color: #fff;
+  width: 100%;
+  margin-top: 10px;
+  font-size: 23px;
+  /* text-align: center; */
+
+  padding-left: 80px;
+  color: #fff;
+}
+
+.content {
+  display: flex;
+
+}
+
+.apis {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  z-index: 1;
+  background-image: url("../../assets/init.gif");
+  background-repeat: no-repeat;
+  background-position: 100% 100%;
+  background-size: cover;
+}
+.api_box {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 30px;
+  display: flex;
+  justify-content: center;
+  width: 450px;
+  color: #fff;
+}
+
+.chat {
+  position: absolute;
+  left: 20px;
+  top: 20%;
+  width: 260px;
+  // scrollbar-width: none;
+  // -ms-overflow-style: none;
+  // overflow-x: hidden;
+  // overflow-y: auto;
+  height: 80%;
+  transform: translateY(-20%);
+  // outline-color: transparent !important;
+  // box-shadow: none ;
+  // border: 1px solid #22222280;
+  padding: 10px;
+  margin: 0 20px;
+  border-radius: 20px;
+  // background-color: #22222280;
+}
+// .chat::-webkit-scrollbar {
+//   display: none;
+// }
+
+.chat_item {
+  width: fit-content;
+  border-radius: 24px 24px 24px 0;
+  font-size: 26px;
+  // text-align: justify;
+  padding: 14px;
+  margin-bottom: 30px;
+  color: #888080;
+}
+
+.packdown {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #e3e3e3;
+  font-size: 30px;
+  border-color: transparent;
+}
+.packup {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #e3e3e3;
+  font-size: 30px;
+  border-color: transparent;
+}
+.guest {
+  background-color: #bac7ff;
+  border: 2px solid #bac7ff;
+}
+.guest::after {
+  border-color: #bac7ff transparent transparent;
+}
+.master {
+  background-color: #fff;
+  border: 2px solid #fff;
+}
+.master::after {
+  border-color: #fff transparent transparent;
+}
+
+.audio_visualizer {
+  width: 300px;
+  height: 30px;
+  background-color: #6495ed; /* 蓝色背景 */
+  display: flex;
+  justify-content: space-between;
+}
+
+.visualizer_bar {
+  width: 2px;
+  height: 100%;
+  background-color: white;
+  animation: bar-animation 1s infinite ease-in-out;
+}
+
+@keyframes bar-animation {
+  0% {
+    height: 10px;
+  }
+  50% {
+    height: 30px;
+  }
+  100% {
+    height: 10px;
+  }
+}
