@@ -60,13 +60,13 @@ $white: #ffffff;
   background-color: #f6e0e1;
   transition: all 0.2s;
   padding: 0;
-
-  &:focus {
+  &:focus{
     border-color: $pink-500;
     box-shadow: 0 0 0 6px rgba($pink-500, 0.2);
     outline: none;
   }
 }
+
 
 .button {
   width: 100%;

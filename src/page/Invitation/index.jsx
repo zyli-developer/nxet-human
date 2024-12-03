@@ -8,17 +8,18 @@ const Invitation = () => {
   const [code, setCode] = useState(Array(6).fill(""));
   const [error, setError] = useState("");
   const inputRefs = useRef(Array(6).fill(null));
-  // const navigate = useNavigate();
-
+  const [currentIndex,setCurrentIndex] = useState(0)
   const handleChange = (index, value) => {
+    console.log('%c [ index ]-13', 'font-size:13px; background:pink; color:#bf2c9f;', index)
     if (!/^\d*$/.test(value)) return;
     setError("");
 
     const newCode = [...code];
-    newCode[index] = value;
+    newCode[index] = parseInt(value.toString().charAt(value.toString().length - 1))
     setCode(newCode);
 
     if (value && index < 5) {
+      setCurrentIndex(index + 1)
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -26,6 +27,7 @@ const Invitation = () => {
   const handleKeyDown = (index, e) => {
     if (e.key === "Backspace" && !code[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
+      setCurrentIndex(index -1)
     }
   };
 
@@ -44,8 +46,10 @@ const Invitation = () => {
     const nextEmptyIndex = newCode.findIndex((c) => !c);
     if (nextEmptyIndex !== -1) {
       inputRefs.current[nextEmptyIndex]?.focus();
+      setCurrentIndex(nextEmptyIndex)
     } else {
       inputRefs.current[5]?.focus();
+      setCurrentIndex(5)
     }
   };
 
@@ -57,12 +61,26 @@ const Invitation = () => {
       window.location.replace("/next");
     } else {
       setError("验证码错误，请重新输入");
-      setCode(Array(6).fill(""));
+      setCode(Array(6).fill(''));
       inputRefs.current[0]?.focus();
+      setCurrentIndex(0)
     }
   };
 
-  useEffect(()=>{ inputRefs.current[0]?.focus();},[])
+
+  useEffect(()=>{ inputRefs.current[0]?.focus()},[])
+  useEffect(()=>{
+    const fill = code.every((digit) => {
+      return digit === 0 ? true : digit
+    })
+    if(fill){
+      handleSubmit()
+    }
+  },[code])
+
+  useEffect(()=>{
+    inputRefs.current[currentIndex]?.focus()
+  },[currentIndex])
 
   return (
     <div className={styles.container}>
@@ -75,13 +93,17 @@ const Invitation = () => {
             <input
               key={index}
               ref={(el) => (inputRefs.current[index] = el)}
-              // type="number"
-              maxLength='1'
+              type="number"
+              // maxLength='1'
+              min={0}
+              max={9}
               value={digit}
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
+           
               onPaste={handlePaste}
               className={styles.input}
+              disabled={index !== currentIndex}
             />
           ))}
         </div>
@@ -90,7 +112,7 @@ const Invitation = () => {
 
         <button
           className={styles.button}
-          disabled={!code.every((digit) => digit)}
+          disabled={!code.every((digit) => digit === 0 ? true : digit)}
           onClick={handleSubmit}
         >
           确认
