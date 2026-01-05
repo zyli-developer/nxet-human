@@ -18,7 +18,7 @@ function Ifream() {
 
             iframe.allow =
               "geolocation;midi;encrypted-media;microphone *;camera *;display-capture *;";
-            iframe.src = "https://nexthuman.cn/share/#/assembly/?solutionId=sol_17261";
+            iframe.src = "https://nexthuman.cn/share/#/assembly/?solutionId=sol_29736";
             // 宽高要控制处理
             iframe.style = `border:none;width:${width};height:${height};`;
             // container.current.appendChild(iframe);
@@ -29,7 +29,7 @@ function Ifream() {
     },[container,width,height])
     return (
       <div ref={container} style={{width,height}}>
-        <iframe src="https://nexthuman.cn/share/#/assembly/?solutionId=sol_17261"  title='pku' style={{width,height}}    allow="camera *; microphone *" frameborder="0"></iframe>
+        <iframe src="https://nexthuman.cn/share/#/assembly/?solutionId=sol_29736"  title='pku' style={{width,height}}    allow="camera *; microphone *" frameborder="0"></iframe>
       </div>
       
      );
