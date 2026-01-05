@@ -2,7 +2,8 @@ import { createBrowserRouter } from "react-router-dom";
 import RouteGuard from '../RouteGuard'
 import Invitation from "../page/Invitation";
 import Main from "../page/Main";
- import Ifream from '../page/Ifream'
+import Ifream from '../page/Ifream'
+import Cartoon from '../page/Cartoon'
 const routes = createBrowserRouter([
     {
         path:'/',
@@ -15,6 +16,13 @@ const routes = createBrowserRouter([
         exact: true,
         replace:true,
         element:<RouteGuard><Main></Main></RouteGuard>
+       
+    },
+    {
+        path:'/cartoon',
+        exact: true,
+        replace:true,
+        element:<RouteGuard><Cartoon></Cartoon></RouteGuard>
        
     },
     {
