@@ -7,6 +7,8 @@ function Ifream() {
     const {width, height } =useWindowSize()
     useEffect(()=>{
       if(!container.current || !width || !height) return
+      
+      const rafId = requestAnimationFrame(() => {
             // 创建iframe
             const iframe = document.createElement("iframe");
             iframe.id = "slIframe";
@@ -20,6 +22,9 @@ function Ifream() {
             // 宽高要控制处理
             iframe.style = `border:none;width:${width};height:${height};`;
             // container.current.appendChild(iframe);
+      });
+      
+      return () => cancelAnimationFrame(rafId);
          
     },[container,width,height])
     return (
